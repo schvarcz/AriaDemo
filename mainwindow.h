@@ -26,6 +26,7 @@ public slots:
     void leftClicked();
     void rightClicked();
     void updateData();
+    void startStopRobot();
     
 private:
     void connectActions();

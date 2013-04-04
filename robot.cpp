@@ -5,6 +5,10 @@ Robot::Robot(int *argc, char **argv):
     robotConnector(&parser,&robot),
     laserConnector(&parser,&robot,&robotConnector)
 {
+}
+
+bool Robot::start()
+{
     Aria::init();
     parser.loadDefaultArguments();
     robot.addRangeDevice(&sick);
@@ -12,13 +16,13 @@ Robot::Robot(int *argc, char **argv):
     if(!robotConnector.connectRobot())
     {
         ArLog::log(ArLog::Terse,"Ops... falha ao conectar ao servidor do robo.");
-        Aria::exit(1);
+        return false;
     }
     laserConnector.setupLaser(&sick);
     if(!laserConnector.connectLaser(&sick))
     {
         ArLog::log(ArLog::Terse,"Ops... falha ao conectar os lasers do robo.");
-        Aria::exit(1);
+        return false;
     }
     ArLog::log(ArLog::Normal,"Robot connected");
     sick.runAsync();
@@ -28,14 +32,21 @@ Robot::Robot(int *argc, char **argv):
     robot.enableMotors();
     robot.unlock();
     ArUtil::sleep(500);
+    return true;
+}
+
+bool Robot::shutdown()
+{
+    robot.stopRunning();
+    robot.waitForRunExit();
+    Aria::shutdown();
+
+    return true;
 }
 
 Robot::~Robot()
 {
-    robot.stopRunning();
-    robot.waitForRunExit();
-
-    Aria::shutdown();
+    this->shutdown();
 }
 
 void Robot::run()
@@ -114,6 +125,13 @@ int Robot::getLaserRange(int angle)
         return -1;
 
     return this->lasers->at(angle).getRange();
+}
+
+int Robot::getSonarRange(int id_sonar)
+{
+    if(id_sonar > 8)
+        return 0;
+    return robot.getSonarRange(id_sonar);
 }
 
 double Robot::getX()

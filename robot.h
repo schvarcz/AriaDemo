@@ -20,6 +20,8 @@ public:
     double getY();
     double getNorth();
     void readingSensors();
+    bool start();
+    bool shutdown();
 private:
     ArRobot robot;
     ArSick sick;

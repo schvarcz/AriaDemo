@@ -15,7 +15,6 @@ MainWindow::MainWindow(QWidget *parent) :
     mRobot = new Robot(&argc,&argv);
 
     mTimer.setInterval(1000);
-    mTimer.start();
 
     this->connectActions();
 
@@ -24,6 +23,30 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::startStopRobot()
+{
+    if(ui->PBStart->isChecked())
+    {
+        ui->PBStart->setText(QString("Stop robot"));
+        if(mRobot->start())
+        {
+            mTimer.start();
+        }
+        else
+        {
+            ui->PBStart->setText(QString("Start robot"));
+            ui->PBStart->setChecked(false);
+        }
+    }
+    else
+    {
+        mRobot->shutdown();
+        mTimer.stop();
+        ui->PBStart->setText(QString("Start robot"));
+    }
+
 }
 
 void MainWindow::dialChanged(int value)
@@ -71,6 +94,15 @@ void MainWindow::updateData()
     ui->LEXPosition->setText(QString::number(mRobot->getX()));
     ui->LEYPosition->setText(QString::number(mRobot->getY()));
     ui->LEHeading->setText(QString::number(mRobot->getNorth()));
+
+    ui->LESonar1->setText(QString::number(mRobot->getSonarRange(0)));
+    ui->LESonar2->setText(QString::number(mRobot->getSonarRange(1)));
+    ui->LESonar3->setText(QString::number(mRobot->getSonarRange(2)));
+    ui->LESonar4->setText(QString::number(mRobot->getSonarRange(3)));
+    ui->LESonar5->setText(QString::number(mRobot->getSonarRange(4)));
+    ui->LESonar6->setText(QString::number(mRobot->getSonarRange(5)));
+    ui->LESonar7->setText(QString::number(mRobot->getSonarRange(6)));
+    ui->LESonar8->setText(QString::number(mRobot->getSonarRange(7)));
 }
 
 void MainWindow::connectActions()
@@ -90,5 +122,6 @@ void MainWindow::connectActions()
     this->connect(ui->PBLeft,SIGNAL(clicked()),this,SLOT(leftClicked()));
     this->connect(ui->PBRight,SIGNAL(clicked()),this,SLOT(rightClicked()));
 
+    this->connect(ui->PBStart, SIGNAL(clicked()), this, SLOT(startStopRobot()));
 
 }
