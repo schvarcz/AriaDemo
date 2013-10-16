@@ -13,8 +13,9 @@ MainWindow::MainWindow(QWidget *parent) :
     int argc = 0;
     char *argv;
     mRobot = new Robot(&argc,&argv);
+    connect(this,SIGNAL(moving(int)),mRobot,SLOT(move(int)));
 
-    mTimer.setInterval(1000);
+    mTimer.setInterval(500);
 
     this->connectActions();
 
@@ -23,6 +24,7 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+    delete mRobot;
 }
 
 void MainWindow::startStopRobot()
@@ -30,15 +32,8 @@ void MainWindow::startStopRobot()
     if(ui->PBStart->isChecked())
     {
         ui->PBStart->setText(QString("Stop robot"));
-        if(mRobot->start())
-        {
-            mTimer.start();
-        }
-        else
-        {
-            ui->PBStart->setText(QString("Start robot"));
-            ui->PBStart->setChecked(false);
-        }
+        mRobot->start();
+        mTimer.start();
     }
     else
     {
@@ -66,12 +61,15 @@ void MainWindow::openAboutDialog()
 
 void MainWindow::upClicked()
 {
-    mRobot->move(100);
+    emit moving(100);
+    //mRobot->move(100);
 }
 
 void MainWindow::downClicked()
 {
-    mRobot->move(-100);
+    cout << "down clicked" << endl;
+    emit moving(-100);
+    //mRobot->move(-100);
 }
 
 void MainWindow::rightClicked()
@@ -86,7 +84,6 @@ void MainWindow::leftClicked()
 
 void MainWindow::updateData()
 {
-    mRobot->readingSensors();
 
     ui->LEAngle->setText(QString::number(ui->dialAngle->value()-90));
     ui->LEValue->setText(QString::number(mRobot->getLaserRange(ui->dialAngle->value()-90)));
@@ -94,7 +91,6 @@ void MainWindow::updateData()
     ui->LEXPosition->setText(QString::number(mRobot->getX()));
     ui->LEYPosition->setText(QString::number(mRobot->getY()));
     ui->LEHeading->setText(QString::number(mRobot->getNorth()));
-
     ui->LESonar1->setText(QString::number(mRobot->getSonarRange(0)));
     ui->LESonar2->setText(QString::number(mRobot->getSonarRange(1)));
     ui->LESonar3->setText(QString::number(mRobot->getSonarRange(2)));

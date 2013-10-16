@@ -3,32 +3,40 @@
 
 #include <Aria.h>
 #include <iostream>
+#include <QObject>
+#include <QThread>
+#include <QTimer>
 
 using namespace std;
 
-class Robot
+class Robot: public QObject, public ArRobot
 {
+    Q_OBJECT
+
 public:
     Robot(int *argc, char **argv);
     ~Robot();
-    void run();
-    void move(int distanceMM);
     void rotate(int degrees);
     int getLaserRange(int angle);
     int getSonarRange(int id_sonar);
-    double getX();
-    double getY();
     double getNorth();
-    void readingSensors();
-    bool start();
+    void start();
+private slots:
+    bool initializeAria();
+public slots:
     bool shutdown();
+    void readingSensors();
+    void move(int distanceMM);
 private:
-    ArRobot robot;
     ArSick sick;
-    ArRobotConnector robotConnector;
-    ArLaserConnector laserConnector;
+    ArSonarDevice sonar;
+    ArRobotConnector *robotConnector;
+    ArLaserConnector *laserConnector;
     ArArgumentParser parser;
-    vector<ArSensorReading> *lasers;
+    vector<ArSensorReading> *lasers = NULL;
+    int sonars[8] = {0,0,0,0,0,0,0,0};
+    QThread *thread;
+    QTimer *timer;
 };
 
 #endif // ROBOT_H

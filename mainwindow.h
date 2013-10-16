@@ -27,6 +27,9 @@ public slots:
     void rightClicked();
     void updateData();
     void startStopRobot();
+
+signals:
+    void moving(int distanceMM);
     
 private:
     void connectActions();

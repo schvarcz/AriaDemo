@@ -1,47 +1,22 @@
 #include "robot.h"
 
+
 Robot::Robot(int *argc, char **argv):
-    parser(argc,argv),
-    robotConnector(&parser,&robot),
-    laserConnector(&parser,&robot,&robotConnector)
+    QObject(),
+    ArRobot(),
+    parser(argc,argv)
 {
-}
+    robotConnector = new ArRobotConnector(&parser,this);
+    laserConnector = new ArLaserConnector(&parser,this,robotConnector);
 
-bool Robot::start()
-{
-    Aria::init();
-    parser.loadDefaultArguments();
-    robot.addRangeDevice(&sick);
-    robotConnector.parseArgs();
-    if(!robotConnector.connectRobot())
-    {
-        ArLog::log(ArLog::Terse,"Ops... falha ao conectar ao servidor do robo.");
-        return false;
-    }
-    laserConnector.setupLaser(&sick);
-    if(!laserConnector.connectLaser(&sick))
-    {
-        ArLog::log(ArLog::Terse,"Ops... falha ao conectar os lasers do robo.");
-        return false;
-    }
-    ArLog::log(ArLog::Normal,"Robot connected");
-    sick.runAsync();
-    robot.runAsync(true);
-    ArUtil::sleep(500);
-    robot.lock();
-    robot.enableMotors();
-    robot.unlock();
-    ArUtil::sleep(500);
-    return true;
-}
+    thread = new QThread();
+    this->moveToThread(thread);
+    connect(thread,SIGNAL(started()),this,SLOT(initializeAria()));
+    connect(thread,SIGNAL(finished()),this,SLOT(shutdown()));
 
-bool Robot::shutdown()
-{
-    robot.stopRunning();
-    robot.waitForRunExit();
-    Aria::shutdown();
-
-    return true;
+    timer = new QTimer();
+    timer->setInterval(500);
+    connect(timer,SIGNAL(timeout()),this,SLOT(readingSensors()));
 }
 
 Robot::~Robot()
@@ -49,131 +24,117 @@ Robot::~Robot()
     this->shutdown();
 }
 
-void Robot::run()
+void Robot::start()
 {
-    int rotate = 0;
-    vector<ArSensorReading> *readings;
+    thread->start();
+}
 
-    while(robot.isConnected())
+bool Robot::initializeAria()
+{
+    Aria::init();
+    //parser->addDefaultArgument("-rh 192.168.1.11 -remoteLaserTcpPort 10002");
+    parser.addDefaultArgument("-rh 127.0.0.1:8101");
+
+    this->addRangeDevice(&sick);
+    if(!robotConnector->connectRobot())
     {
-        if(sick.isConnected())
-        {
-            sick.lockDevice();
-            readings = sick.getRawReadingsAsVector();
-            sick.unlockDevice();
-
-            if(rotate !=0 && (readings->at(rotate+90).getRange()>= 1000))
-            {
-                this->rotate(-rotate);
-
-                rotate = 0;
-            }
-            if(readings->at(90).getRange()>= 500)
-            {
-                if(rotate == 0)
-                {
-                    this->move(readings->at(90).getRange()-500);
-                }
-                else
-                {
-                    this->move(500);
-                }
-            }
-            else
-            {
-
-                if(readings->at(90).getRange() < 500)
-                {
-                    this->move(-500+(int)readings->at(90).getRange());
-                }
-                if(readings->at(0).getRange()>= 800)
-                {
-                    rotate = 90;
-                }
-                else if(readings->at(180).getRange()>= 800)
-                {
-                    rotate = -90;
-                }
-                else
-                {
-                    rotate = 180;
-                }
-
-                this->rotate(rotate);
-            }
-        }
-        else
-        {
-            cout << "sensor DESconectado..." << endl;
-        }
+        ArLog::log(ArLog::Terse,"Ops... falha ao conectar ao servidor do robo.");
+        this->shutdown();
+        return false;
     }
+    ArLog::log(ArLog::Normal,"Robot connected");
+    laserConnector->setupLaser(&sick);
+
+    if(!laserConnector->connectLaser(&sick))
+    {
+        ArLog::log(ArLog::Terse,"Ops... falha ao conectar os lasers do robo.");
+        this->shutdown();
+        return false;
+    }
+    list<ArRangeDevice *> *lista = this->getRangeDeviceList();
+    for(list<ArRangeDevice *>::iterator it = lista->begin(); it != lista->end();it++)
+    {
+        cout << "Sensor: " << (*it)->getName() << endl;
+    }
+    ArLog::log(ArLog::Normal,"Laser connected");
+    sick.runAsync();
+    this->runAsync(true);
+    ArUtil::sleep(500);
+    this->lock();
+    this->enableMotors();
+    this->unlock();
+    ArUtil::sleep(500);
+    timer->start();
+
+    return true;
+}
+
+bool Robot::shutdown()
+{
+    this->thread->exit();
+    this->stopRunning();
+    this->waitForRunExit();
+    this->sick.stopRunning();
+    this->sick.disconnect();
+    ArRobot::disconnect();
+    Aria::shutdown();
+    return true;
 }
 
 void Robot::readingSensors()
 {
-    if(robot.isConnected() && sick.isConnected())
+    if(this->isConnected())
     {
+        if(sick.isConnected())
+        {
             sick.lockDevice();
             lasers = sick.getRawReadingsAsVector();
             sick.unlockDevice();
+        }
+        for(int i = 0;i<8;i++)
+        {
+            sonars[i] = ArRobot::getSonarRange(i);
+        }
     }
 }
 
 int Robot::getLaserRange(int angle)
 {
-    if(this->lasers->size() <= angle)
-        return -1;
+    if((this->lasers == NULL) || (this->lasers->size() <= angle))
+    {
+        return 0;
+    }
 
     return this->lasers->at(angle).getRange();
 }
 
 int Robot::getSonarRange(int id_sonar)
 {
-    if(id_sonar > 8)
+    if(8 <= id_sonar)
+    {
         return 0;
-    return robot.getSonarRange(id_sonar);
-}
+    }
 
-double Robot::getX()
-{
-    return robot.getX();
-}
-
-double Robot::getY()
-{
-    return robot.getY();
+    return this->sonars[id_sonar];
 }
 
 double Robot::getNorth()
 {
-    return robot.getTh();
+    return this->getTh();
 }
 
 void Robot::move(int distanceMM)
 {
-    if(!robot.isMoveDone())
-        return;
     ArLog::log(ArLog::Normal,"Movendo: %d",distanceMM);
-    robot.lock();
-    robot.move(distanceMM);
-    robot.unlock();
-    int timeout = 5000/distanceMM;
-    while((!robot.isMoveDone()) && (timeout >= 0))
-    {
-        ArUtil::sleep(distanceMM);
-        timeout--;
-    }
+    this->lock();
+    this->move(distanceMM);
+    this->unlock();
 }
+
 void Robot::rotate(int degrees)
 {
-    if(!robot.isHeadingDone())
-        return;
     ArLog::log(ArLog::Normal,"Rotacionando: %d",degrees);
-    robot.lock();
-    robot.setDeltaHeading(degrees);
-    robot.unlock();
-    while(!robot.isHeadingDone())
-    {
-        ArUtil::sleep(500);
-    }
+    this->lock();
+    this->setDeltaHeading(degrees);
+    this->unlock();
 }
