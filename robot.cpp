@@ -16,7 +16,7 @@ Robot::Robot(int *argc, char **argv):
 
     timer = new QTimer();
     timer->setInterval(500);
-    connect(timer,SIGNAL(timeout()),this,SLOT(readingSensors()));
+//    connect(timer,SIGNAL(timeout()),this,SLOT(readingSensors()));
 }
 
 Robot::~Robot()
@@ -33,7 +33,7 @@ bool Robot::initializeAria()
 {
     Aria::init();
     //parser->addDefaultArgument("-rh 192.168.1.11 -remoteLaserTcpPort 10002");
-    parser.addDefaultArgument("-rh 127.0.0.1:8101");
+//    parser.addDefaultArgument("-rh 127.0.0.1:8101");
 
     this->addRangeDevice(&sick);
     if(!robotConnector->connectRobot())
@@ -127,7 +127,7 @@ void Robot::move(int distanceMM)
 {
     ArLog::log(ArLog::Normal,"Movendo: %d",distanceMM);
     this->lock();
-    this->move(distanceMM);
+    ArRobot::move(distanceMM);
     this->unlock();
 }
 

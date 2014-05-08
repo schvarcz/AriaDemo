@@ -27,4 +27,5 @@ FORMS    += mainwindow.ui \
 INCLUDEPATH += /usr/local/Aria/include
 
 LIBS += -L/usr/local/Aria/lib/ \
-    -lAria -lArNetworking
+    -lAria
+

@@ -13,7 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
     int argc = 0;
     char *argv;
     mRobot = new Robot(&argc,&argv);
-    connect(this,SIGNAL(moving(int)),mRobot,SLOT(move(int)));
+//    connect(this,SIGNAL(moving(int)),mRobot,SLOT(move(int)));
 
     mTimer.setInterval(500);
 
@@ -61,15 +61,15 @@ void MainWindow::openAboutDialog()
 
 void MainWindow::upClicked()
 {
-    emit moving(100);
-    //mRobot->move(100);
+//    emit moving(100);
+    mRobot->move(100);
 }
 
 void MainWindow::downClicked()
 {
     cout << "down clicked" << endl;
-    emit moving(-100);
-    //mRobot->move(-100);
+//    emit moving(-100);
+    mRobot->move(-100);
 }
 
 void MainWindow::rightClicked()
